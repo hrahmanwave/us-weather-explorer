@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uswx"
+version = "0.0.1"
+description = "US weather explorer: daily maps and highlights from ECMWF Open Data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Md. Hasanur Rahman" }]
+dependencies = [
+    "ecmwf-opendata",
+    "xarray",
+    "cfgrib",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "cartopy",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uswx"]
+
+[tool.ruff]
+line-length = 100
