@@ -6,8 +6,11 @@ The aim: a web page that answers *"what's the interesting weather in the US righ
 and where is it heading?"* — storms, heavy rain, and atmospheric rivers — with maps
 for the next few days.
 
-> **Status:** step 1. Downloads the latest ECMWF IFS forecast and draws maps for the
-> contiguous US and the Ohio Valley.
+**Live page:** https://hrahmanwave.github.io/us-weather-explorer/
+
+The page lists what stands out in the forecast (heavy rain, deep lows, strong highs,
+moisture plumes), and shows the maps with a day-by-day timeline. Click a highlight to
+jump to its map.
 
 ## Maps
 
@@ -26,22 +29,44 @@ conda activate uswx
 pip install -e ".[dev]"
 ```
 
-## Make today's maps
+## Build the site
 
 ```bash
-python scripts/make_maps.py                     # contiguous US
-python scripts/make_maps.py --region ohio-valley
+python scripts/build_site.py
 ```
 
-Maps go to `docs/maps/<region>/`.
+Downloads the latest forecast once, draws maps for every region from that same run
+(`docs/maps/<region>/`), finds the highlights, and writes `docs/data/latest.json`.
+Open the page locally with:
+
+```bash
+python -m http.server --directory docs
+```
+
+then visit http://localhost:8000.
+
+To draw maps for a single region only: `python scripts/make_maps.py --region ohio-valley`.
+
+## How highlights are found
+
+| Highlight | Rule |
+| --- | --- |
+| Heavy rain | 24-hour total of at least 25 mm; the wettest point each day |
+| Low pressure | A local pressure minimum at or below 1008 hPa |
+| Strong high | A local pressure maximum at or above 1032 hPa |
+| Moisture plume | Total column water vapour of at least 50 kg/m² |
+
+Pressure centres are found on smoothed sea level pressure and must stand out from their
+surroundings; a system seen at several forecast times is listed once, where it is strongest.
+Place names come from Natural Earth state and province boundaries.
 
 ## Roadmap
 
 - [x] Download latest ECMWF IFS forecast (Open Data, 0.25°)
 - [x] Water vapour + pressure maps, 24 h precipitation maps (CONUS, Ohio Valley)
 - [ ] 10 m wind and 2 m temperature anomaly maps
-- [ ] Web page with region tabs and a forecast-step slider (GitHub Pages)
-- [ ] Automatic highlights: deep lows, heavy rain, strong winds, atmospheric rivers
+- [x] Web page with region tabs and a forecast timeline (GitHub Pages)
+- [x] Automatic highlights: heavy rain, deep lows, strong highs, moisture plumes
 - [ ] Daily automatic update with GitHub Actions
 - [ ] Rainfall totals for major river basins (Ohio, Mississippi, ...)
 
