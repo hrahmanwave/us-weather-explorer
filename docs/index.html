@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>US weather, the next three days</title>
+<meta name="description" content="Daily US weather maps and highlights from the ECMWF forecast: storms, heavy rain and moisture plumes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #e8eef3;
+    --panel: #f6f9fb;
+    --ink: #17283a;
+    --ink-soft: #4c6175;
+    --rule: #c5d2dd;
+    --low: #b3261e;
+    --high: #1f4e8c;
+    --rain: #1f7a6b;
+    --moisture: #23739f;
+    --focus: #1f4e8c;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #15222e;
+      --panel: #1c2c3a;
+      --ink: #dce6ee;
+      --ink-soft: #9db0c0;
+      --rule: #2e4253;
+      --low: #f0695c;
+      --high: #86b4f0;
+      --rain: #56c7ae;
+      --moisture: #6db8e6;
+      --focus: #86b4f0;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 1rem/1.5 "Barlow", "Segoe UI", system-ui, sans-serif;
+  }
+  .page {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 1.75rem 1.25rem 2.5rem;
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    grid-template-areas: "head head" "side main" "foot foot";
+    gap: 1.5rem 2rem;
+  }
+  header { grid-area: head; }
+  aside { grid-area: side; }
+  main { grid-area: main; min-width: 0; }
+  footer { grid-area: foot; }
+
+  h1 {
+    font: 600 clamp(1.9rem, 3.6vw, 2.75rem)/1.1 "Barlow Semi Condensed", "Barlow", sans-serif;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.4rem;
+  }
+  .run { margin: 0; color: var(--ink-soft); max-width: 70ch; }
+
+  /* Highlights */
+  aside h2 {
+    font: 600 1.15rem/1.3 "Barlow Semi Condensed", "Barlow", sans-serif;
+    margin: 0 0 0.75rem;
+  }
+  .highlights { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+  .hl {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 4.6rem 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--kind, var(--ink-soft));
+    border-radius: 6px;
+    padding: 0.65rem 0.75rem;
+    cursor: pointer;
+  }
+  .hl:hover { border-color: var(--kind); }
+  .hl[aria-current="true"] { background: color-mix(in srgb, var(--kind) 12%, var(--panel)); border-color: var(--kind); }
+  .hl[data-kind="low"] { --kind: var(--low); }
+  .hl[data-kind="high"] { --kind: var(--high); }
+  .hl[data-kind="rain"] { --kind: var(--rain); }
+  .hl[data-kind="moisture"] { --kind: var(--moisture); }
+  .hl-value { color: var(--kind); font: 600 1.45rem/1 "Barlow Semi Condensed", sans-serif; }
+  .hl-value small { display: block; font: 500 0.8rem/1.4 "Barlow", sans-serif; }
+  .hl-title { font-weight: 600; line-height: 1.3; }
+  .hl-detail { color: var(--ink-soft); font-size: 0.92rem; }
+  .note { color: var(--ink-soft); margin: 0; }
+
+  /* Map */
+  figure { margin: 0; }
+  .map-frame {
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+    aspect-ratio: 1147 / 849;
+    display: grid;
+    place-items: center;
+  }
+  .map-frame a { display: block; width: 100%; height: 100%; }
+  .map-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .map-frame .missing { color: #4c6175; padding: 2rem; text-align: center; }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin: 0 0 0.9rem; }
+  .group { display: flex; align-items: center; gap: 0.5rem; }
+  .group-label { color: var(--ink-soft); font-size: 0.92rem; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--panel); }
+  .seg button {
+    font: 500 0.95rem/1 "Barlow", sans-serif;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    padding: 0.55rem 0.85rem;
+    cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--rule); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+  /* Timeline: one stop per forecast time, like the time axis of a forecast chart */
+  .timeline { display: flex; align-items: stretch; gap: 0.75rem; margin-top: 0.9rem; }
+  .play {
+    flex: none;
+    width: 2.75rem;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .stops { flex: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 3px solid var(--rule); }
+  .stop {
+    position: relative;
+    font: inherit;
+    color: var(--ink-soft);
+    background: none;
+    border: 0;
+    padding: 0.55rem 0.25rem 0.2rem;
+    text-align: center;
+    cursor: pointer;
+    line-height: 1.25;
+  }
+  .stop::before {
+    content: "";
+    position: absolute;
+    top: -3px; left: 0; right: 0;
+    height: 3px;
+  }
+  .stop .day { display: block; font-weight: 600; }
+  .stop .hour { font-size: 0.88rem; }
+  .stop[aria-pressed="true"] { color: var(--ink); }
+  .stop[aria-pressed="true"]::before { background: var(--ink); height: 5px; top: -4px; }
+
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  footer { color: var(--ink-soft); font-size: 0.9rem; border-top: 1px solid var(--rule); padding-top: 1rem; }
+  footer p { margin: 0.2rem 0; max-width: 90ch; }
+  a { color: inherit; }
+
+  @media (max-width: 860px) {
+    .page { grid-template-columns: 1fr; grid-template-areas: "head" "main" "side" "foot"; padding-top: 1.25rem; }
+    .group { flex-wrap: wrap; }
+    .stop .mon { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>US weather, the next three days</h1>
+    <p class="run" id="run">Loading the latest forecast…</p>
+  </header>
+
+  <aside aria-labelledby="hl-heading">
+    <h2 id="hl-heading">What stands out</h2>
+    <ul class="highlights" id="highlights"></ul>
+  </aside>
+
+  <main>
+    <div class="controls">
+      <div class="group">
+        <span class="group-label" id="layer-label">Map</span>
+        <div class="seg" role="group" aria-labelledby="layer-label" id="layers">
+          <button type="button" data-layer="vapour_pressure">Moisture and pressure</button>
+          <button type="button" data-layer="precip24h">Rain, 24 hours</button>
+        </div>
+      </div>
+      <div class="group">
+        <span class="group-label" id="region-label">Area</span>
+        <div class="seg" role="group" aria-labelledby="region-label" id="regions"></div>
+      </div>
+    </div>
+
+    <figure>
+      <div class="map-frame" id="frame"><a id="map-link" href="#" title="Open the full-size map"><img id="map" alt=""></a></div>
+      <div class="timeline">
+        <button type="button" class="play" id="play" aria-label="Play forecast">▶</button>
+        <div class="stops" role="group" aria-label="Forecast time" id="stops"></div>
+      </div>
+    </figure>
+  </main>
+
+  <footer>
+    <p>Forecast data from ECMWF Open Data (IFS model). Maps and highlights are made automatically and are not an official forecast; for warnings, follow the National Weather Service.</p>
+    <p><a href="https://github.com/hrahmanwave/us-weather-explorer">Source code on GitHub</a></p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const state = { layer: "vapour_pressure", region: "conus", step: 0, timer: null };
+  let site = null;
+
+  const $ = (id) => document.getElementById(id);
+  const part = (iso, opts) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(new Date(iso));
+  const when = (iso) => {
+    const wd = part(iso, { weekday: "short" });
+    const d = part(iso, { day: "numeric" });
+    const m = part(iso, { month: "short" });
+    const hh = part(iso, { hour: "2-digit", hourCycle: "h23" });
+    const mm = part(iso, { minute: "2-digit" }).padStart(2, "0");
+    return { day: `${wd} ${d} ${m}`, short: `${wd} ${d}`, month: m,
+             hour: mm === "00" ? `${hh} UTC` : `${hh}:${mm} UTC` };
+  };
+
+  const frames = () => site.regions[state.region].layers[state.layer];
+
+  function nearestStep(list, step) {
+    return list.reduce((best, f) => Math.abs(f.step - step) < Math.abs(best.step - step) ? f : best, list[0]).step;
+  }
+
+  function render() {
+    const list = frames();
+    if (!list.some((f) => f.step === state.step)) state.step = nearestStep(list, state.step);
+    const frame = list.find((f) => f.step === state.step);
+
+    const img = $("map");
+    img.src = frame.file;
+    $("map-link").href = frame.file;
+    const t = when(frame.valid);
+    const what = state.layer === "precip24h"
+      ? "Rain in the 24 hours to " : "Water vapour and sea level pressure at ";
+    img.alt = `${what}${t.day}, ${t.hour}, ${site.regions[state.region].name}`;
+
+    document.querySelectorAll("#layers button").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset.layer === state.layer)));
+    document.querySelectorAll("#regions button").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset.region === state.region)));
+
+    const stops = $("stops");
+    stops.replaceChildren(...list.map((f) => {
+      const b = document.createElement("button");
+      const tt = when(f.valid);
+      b.type = "button";
+      b.className = "stop";
+      b.setAttribute("aria-pressed", String(f.step === state.step));
+      b.innerHTML = `<span class="day">${tt.short}<span class="mon"> ${tt.month}</span></span><span class="hour">${tt.hour}</span>`;
+      b.addEventListener("click", () => { stop(); state.step = f.step; render(); });
+      return b;
+    }));
+
+    document.querySelectorAll(".hl").forEach((b) => {
+      const on = b.dataset.layer === state.layer && Number(b.dataset.step) === state.step
+        && b.dataset.region === state.region;
+      b.setAttribute("aria-current", String(on));
+    });
+
+    // Warm the cache for the next frame so playback does not flicker
+    const i = list.indexOf(frame);
+    const next = list[(i + 1) % list.length];
+    if (next) new Image().src = next.file;
+  }
+
+  function move(delta) {
+    const list = frames();
+    const i = list.findIndex((f) => f.step === state.step);
+    state.step = list[(i + delta + list.length) % list.length].step;
+    render();
+  }
+
+  function stop() {
+    clearInterval(state.timer);
+    state.timer = null;
+    $("play").textContent = "▶";
+    $("play").setAttribute("aria-label", "Play forecast");
+  }
+
+  function togglePlay() {
+    if (state.timer) return stop();
+    state.timer = setInterval(() => move(1), 1400);
+    $("play").textContent = "❚❚";
+    $("play").setAttribute("aria-label", "Pause forecast");
+  }
+
+  function unitOf(h) {
+    return { low: "hPa", high: "hPa", rain: "mm", moisture: "kg/m²" }[h.kind] || "";
+  }
+
+  function buildHighlights() {
+    const ul = $("highlights");
+    if (!site.highlights.length) {
+      ul.outerHTML = '<p class="note">Nothing stands out in this forecast: no heavy rain, deep lows or strong highs over the US.</p>';
+      return;
+    }
+    ul.replaceChildren(...site.highlights.map((h) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "hl";
+      Object.assign(b.dataset, { kind: h.kind, layer: h.layer, step: h.step, region: h.region });
+      b.innerHTML = `<span class="hl-value">${Math.round(h.value)}<small>${unitOf(h)}</small></span>
+        <span><span class="hl-title"></span><br><span class="hl-detail"></span></span>`;
+      b.querySelector(".hl-title").textContent = h.title;
+      b.querySelector(".hl-detail").textContent = h.detail;
+      b.addEventListener("click", () => {
+        stop();
+        Object.assign(state, { layer: h.layer, step: h.step, region: h.region });
+        render();
+      });
+      li.append(b);
+      return li;
+    }));
+  }
+
+  function buildRegions() {
+    $("regions").replaceChildren(...Object.entries(site.regions).map(([key, r]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.region = key;
+      b.textContent = key === "conus" ? "United States" : r.name;
+      b.addEventListener("click", () => { state.region = key; render(); });
+      return b;
+    }));
+  }
+
+  document.querySelectorAll("#layers button").forEach((b) =>
+    b.addEventListener("click", () => { state.layer = b.dataset.layer; render(); }));
+  $("play").addEventListener("click", togglePlay);
+  document.addEventListener("keydown", (e) => {
+    if (!site || e.target.closest("input, textarea")) return;
+    if (e.key === "ArrowRight") { stop(); move(1); }
+    if (e.key === "ArrowLeft") { stop(); move(-1); }
+  });
+
+  fetch("data/latest.json", { cache: "no-cache" })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((data) => {
+      site = data;
+      const run = when(site.run);
+      const made = when(site.generated);
+      $("run").textContent = `${site.model} forecast from ${run.day}, ${run.hour}. Page updated ${made.day}, ${made.hour}.`;
+      buildRegions();
+      buildHighlights();
+      render();
+    })
+    .catch(() => {
+      $("run").textContent = "The forecast data could not be loaded. Run scripts/build_site.py to create docs/data/latest.json, then reload.";
+      $("frame").innerHTML = '<p class="missing">No maps yet.</p>';
+    });
+})();
+</script>
+</body>
+</html>
