@@ -9,4 +9,8 @@ venv/
 data/
 *.grib2
 *.idx
+
+# Built by scripts/build_site.py; published by the "update site" workflow, not committed
+docs/maps/**/*.png
+docs/data/
 .idea/
