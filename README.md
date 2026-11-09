@@ -1,12 +1,15 @@
 # us-weather-explorer
 
+[![tests](https://github.com/hrahmanwave/us-weather-explorer/actions/workflows/tests.yml/badge.svg)](https://github.com/hrahmanwave/us-weather-explorer/actions/workflows/tests.yml)
+[![update site](https://github.com/hrahmanwave/us-weather-explorer/actions/workflows/update-site.yml/badge.svg)](https://github.com/hrahmanwave/us-weather-explorer/actions/workflows/update-site.yml)
+
 Daily weather maps and highlights for the **United States**, built from
 [ECMWF Open Data](https://www.ecmwf.int/en/forecasts/datasets/open-data).
 The aim: a web page that answers *"what's the interesting weather in the US right now,
 and where is it heading?"* — storms, heavy rain, and atmospheric rivers — with maps
 for the next few days.
 
-**Live page:** https://hrahmanwave.github.io/us-weather-explorer/
+**Live page:** https://hrahmanwave.github.io/us-weather-explorer/ (rebuilt automatically twice a day)
 
 The page lists what stands out in the forecast (heavy rain, deep lows, strong highs,
 moisture plumes), and shows the maps with a day-by-day timeline. Click a highlight to
@@ -67,12 +70,24 @@ Place names come from Natural Earth state and province boundaries.
 - [ ] 10 m wind and 2 m temperature anomaly maps
 - [x] Web page with region tabs and a forecast timeline (GitHub Pages)
 - [x] Automatic highlights: heavy rain, deep lows, strong highs, moisture plumes
-- [ ] Daily automatic update with GitHub Actions
+- [x] Automatic update twice a day with GitHub Actions, published to GitHub Pages
 - [ ] Rainfall totals for major river basins (Ohio, Mississippi, ...)
+
+## How the site stays up to date
+
+The **update site** workflow (`.github/workflows/update-site.yml`) runs at 08:40 and 20:40 UTC,
+after ECMWF publishes the 00 and 12 UTC runs. It installs the package, runs
+`scripts/build_site.py`, and publishes `docs/` to GitHub Pages. The maps and `latest.json`
+are build output and are not committed to the repository. It can also be started by hand from
+the Actions tab (**Run workflow**).
+
+The forecast is downloaded from ECMWF's AWS mirror first, then from ECMWF directly
+(set `ECMWF_SOURCES` to change the order).
 
 ## Data and credit
 
-Forecast data: ECMWF Open Data (IFS). Check ECMWF's terms of use for attribution requirements.
+Forecast data: ECMWF Open Data (IFS), licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Contains modified ECMWF data.
 
 ## License
 

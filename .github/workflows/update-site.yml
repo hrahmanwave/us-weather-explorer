@@ -1,0 +1,61 @@
+name: update site
+
+# Rebuild the maps and highlights from the newest ECMWF run and publish to GitHub Pages.
+# ECMWF publishes the 00 and 12 UTC runs a few hours after their start time.
+on:
+  schedule:
+    - cron: "40 8 * * *"    # 00 UTC run
+    - cron: "40 20 * * *"   # 12 UTC run
+  push:
+    branches: [main]        # publish page changes right away
+  workflow_dispatch:        # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ECMWF_SOURCES: aws,ecmwf
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Cache Natural Earth map data
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/cartopy
+          key: cartopy-naturalearth-v1
+
+      - name: Build maps and highlights
+        run: python scripts/build_site.py
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

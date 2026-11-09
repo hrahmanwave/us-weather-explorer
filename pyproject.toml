@@ -14,6 +14,7 @@ dependencies = [
     "ecmwf-opendata",
     "xarray",
     "cfgrib",
+    "eccodes",
     "numpy",
     "scipy",
     "matplotlib",
