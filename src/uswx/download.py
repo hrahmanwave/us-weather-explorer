@@ -35,7 +35,10 @@ def fetch_latest(
     last_error: Exception | None = None
     for source in [s.strip() for s in sources if s.strip()]:
         try:
-            client = Client(source=source, model=model, resol="0p25")
+            # The library's defaults retry up to 500 times, two minutes apart; fail fast
+            # instead so the next mirror gets a chance.
+            client = Client(source=source, model=model, resol="0p25",
+                            maximum_retries=3, retry_after=20)
             run = client.latest(type="fc", step=steps[-1], param=params)
             target = Path(target_dir) / f"{model}_{run:%Y%m%d%H}.grib2"
             target.parent.mkdir(parents=True, exist_ok=True)

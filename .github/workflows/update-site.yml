@@ -22,8 +22,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25      # never hang for hours if a download stalls
     env:
-      ECMWF_SOURCES: aws,ecmwf
+      ECMWF_SOURCES: ecmwf,google,azure,aws   # tried in order; each gets 3 attempts
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +43,7 @@ jobs:
           key: cartopy-naturalearth-v1
 
       - name: Build maps and highlights
-        run: python scripts/build_site.py
+        run: python -u scripts/build_site.py    # -u: show progress lines immediately
 
       - uses: actions/configure-pages@v5
 

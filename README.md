@@ -81,7 +81,7 @@ after ECMWF publishes the 00 and 12 UTC runs. It installs the package, runs
 are build output and are not committed to the repository. It can also be started by hand from
 the Actions tab (**Run workflow**).
 
-The forecast is downloaded from ECMWF's AWS mirror first, then from ECMWF directly
+The forecast is downloaded from ECMWF directly first, then from its Google, Azure and AWS mirrors
 (set `ECMWF_SOURCES` to change the order).
 
 ## Data and credit
